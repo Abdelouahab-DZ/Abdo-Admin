@@ -94,7 +94,7 @@ scan() {
 }
 
 # Start of the script
-python3 src/CheckVersion.py
+python3 CheckVersion.py
 sleep 1.5
 
 
