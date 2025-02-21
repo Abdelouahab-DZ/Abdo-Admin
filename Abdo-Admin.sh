@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Colors and styles
+# Colors 
 r='\e[91m'
 g='\e[92m'
 y='\e[93m'
@@ -10,6 +10,7 @@ c='\e[96m'
 w='\e[97m'
 n='\e[0m'
 
+# Styles
 bd='\e[1m'
 dm='\e[2m'
 it='\e[3m'
