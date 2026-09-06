@@ -11,7 +11,7 @@ clear
 
 # Display the menu to select an option
 echo "${BLUE}------------ ---------"
-echo "| ${RED} Select Option ${BLUE}     |"
+echo "| ${RED} Select Option ${BLUE}      |"
 echo "|------- ----  -------|"
 echo "| ${CYAN}1. Termux ${BLUE} "
 echo "| ${CYAN}2. Linux ${BLUE} "
@@ -28,7 +28,7 @@ clear
 
 # Display the selected option
 echo "${BLUE}------------ ---------"
-echo "| ${RED} Select Option ${BLUE}     |"
+echo "| ${RED} Select Option ${BLUE}      |"
 echo "|------- ----  -------|"
 echo "| ${CYAN}1. Termux ${BLUE} "
 echo "| ${CYAN}2. Linux ${BLUE} "
@@ -39,60 +39,47 @@ echo "| ${RED}Selected option: ${numb} ${BLUE}"
 echo "----  ---------- ------"
 
 # Use conditional statements to install packages based on the selected option
-if [ $numb = "1" ]
+if [ "$numb" = "1" ]
 then
   # Option 1: Install packages for Termux
   echo -n "${BLUE}[${RED}!${BLUE}] ${GREEN}Loading Installing In Termux..."
   echo ""
-  pkg upgrade && pkg update
-  pkg install python3
-  pkg install php
-  pkg install toilet
-  pkg install python
+  pkg update && pkg upgrade -y
+  pkg install -y python python3 php toilet
   python3 -m pip install requests
-  python3 -m pip install smtp
   sleep 0.8
   echo -n "${BLUE}[${GREEN}+${BLUE}] ${GREEN}Succesful Installed..!"
   echo ""
-elif [ $numb = "2" ]
+elif [ "$numb" = "2" ]
 then
   # Option 2: Install packages for Linux
   echo -n "${BLUE}[${RED}!${BLUE}] ${GREEN}Loading Installing In Linux..."
   echo ""
-  apt upgrade && apt update
-  apt install python3
-  apt install php
-  apt install toilet
-  apt install python
+  sudo apt update && sudo apt upgrade -y
+  sudo apt install -y python3 python3-pip php toilet
   pip3 install requests
-  pip3 install smtp
   sleep 1
   echo -n "${BLUE}[${GREEN}+${BLUE}] ${GREEN}Succesful Installed..!"
   echo ""
-elif [ $numb = "3" ]
+elif [ "$numb" = "3" ]
 then
   # Option 3: Install packages for Kali Linux
   echo -n "${BLUE}[${RED}!${BLUE}] ${GREEN}Loading Installing In Kali Linux..."
   echo ""
-  sudo apt-get upgrade && apt-get update
-  sudo apt-get install python3
-  sudo apt-get install php
-  sudo apt-get install python
+  sudo apt-get update && sudo apt-get upgrade -y
+  sudo apt-get install -y python3 python3-pip php
   sudo pip3 install requests
-  sudo pip3 install smtp
   sleep 1
   echo -n "${BLUE}[${GREEN}+${BLUE}] ${GREEN}Succesful Installed..!"
   echo ""
-elif [ $numb = "4" ]
+elif [ "$numb" = "4" ]
 then
   # Option 4: Install packages for Arch Linux
   echo -n "${BLUE}[${RED}!${BLUE}] ${GREEN}Loading Installing In Arch Linux..."
   echo ""
-  sudo pacman -Syu
-  sudo pacman -S python
-  sudo pacman -S python-pip
+  sudo pacman -Syu --noconfirm
+  sudo pacman -S --noconfirm python python-pip php
   sudo pip install requests
-  sudo pip install smtp
   sleep 1
   echo -n "${BLUE}[${GREEN}+${BLUE}] ${GREEN}Succesful Installed..!"
   echo ""
@@ -103,6 +90,6 @@ else
   echo "2. Python-pip"
   echo "3. Requests"
   echo "4. Php"
-  echo "5. SMTP"
+  echo "5. SMTP (Built-in via smtplib)"
   echo "6. Toilet"
 fi
