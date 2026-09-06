@@ -17,6 +17,7 @@ it='\e[3m'
 ul='\e[4m'
 rv='\e[7m'
 
+colors=($r $g $y $b $p $c $w)
 thread=15
 count=1
 
@@ -32,8 +33,8 @@ trap 'printf "\n";exits;exit 0' INT
 
 # Banner function
 banner() {
-        rand1=$( shuf -i 0-${#colors[@]} -n 1 )
-        rand2=$( shuf -i 0-${#colors[@]} -n 1 )
+        rand1=$( shuf -i 0-$(( ${#colors[@]} - 1 )) -n 1 )
+        rand2=$( shuf -i 0-$(( ${#colors[@]} - 1 )) -n 1 )
         sss=''
         start=1
         end=50
@@ -49,11 +50,11 @@ banner() {
                 fi
         done
 
-        echo -e "\t${bd}${g}|${w} Created By  ${b}:${c} Abdelouahab-OM ${n}          ${g}${n}"
+        echo -e "\t${bd}${g}|${w} Created By  ${b}:${c} Abdelouahab-OM ${n}         ${g}${n}"
         sleep 0.5
-        echo -e "\t${bd}${g}│${w} Version ${b}:${w} 1.9.0                          ${g}${n}"
-        echo -e "\t${bd}${g}│${w} Code    ${b}:${w} Bash, python                   ${g}${n}"
-        echo -e "\t${bd}${g}|${w} Date    ${b}:${w} 21 02 2025                 ${g}${n}"
+        echo -e "\t${bd}${g}│${w} Version ${b}:${w} 1.9.0                     ${g}${n}"
+        echo -e "\t${bd}${g}│${w} Code    ${b}:${w} Bash, python                    ${g}${n}"
+        echo -e "\t${bd}${g}|${w} Date    ${b}:${w} 21 02 2025               ${g}${n}"
         sleep 0.5
 }
 
@@ -65,7 +66,6 @@ check_robots() {
     if [[ $http_code == "200" && ! -z "$response" && ! "$response" == *"</html>"* ]]; then
         echo -e "      \t${g}[${w}+${g}]${w} Robots.txt found for ${site}${n}"
         if [[ ! -z $output_file ]]; then
-            #echo -e "      \t${g}[${w}+${g}]${w} Saving Robots.txt for ${site}${n}"
             wget -q -O "${web}/robots.txt" "${site}/robots.txt"
         fi
     else
@@ -78,26 +78,27 @@ check_robots() {
 scan() {
     web=${1}
     path="${2}"
-    scan_web=$( curl -s -o /dev/null ${web}/${path} -w %{http_code} )
+    scan_web=$( curl -s -o /dev/null "${web}/${path}" -w "%{http_code}" )
     if [[ $scan_web == 200 ]] || [[ $scan_web == 201 ]]; then
         printf "\n"
         echo -e "      \t${g}[${w}+${g}] ${w}${web}/${path} ${y}~> ${g}${scan_web}${n}"
         if [[ ! -z $output_file ]]; then
-            echo "${web}/${path} ~> ${scan_web}" >> $output_file
+            echo "${web}/${path} ~> ${scan_web}" >> "$output_file"
         fi
         printf "\n"
     else
         echo -e "      \t${g}[${r}-${g}] ${w}${web}/${path} ${b}~> ${r}${scan_web}${n}"
         if [[ ! -z $output_file ]]; then
-            echo "${web}/${path} ~> ${scan_web}" >> $output_file
+            echo "${web}/${path} ~> ${scan_web}" >> "$output_file"
         fi
     fi
 }
 
 # Start of the script
-python3 CheckVersion.py
-sleep 1.5
-
+if [[ -f CheckVersion.py ]]; then
+    python3 CheckVersion.py
+    sleep 1.5
+fi
 
 banner
 echo -ne "      \t${c}[${w}>${c}] ${w}Enter your website ${g}:${n} "
@@ -109,8 +110,12 @@ if [[ -z $web ]]; then
     exit 0
 fi
 
-web=$(echo ${web} | cut -d '/' -f 3)
-
+# Clean URL handling (handles http:// or https:// properly)
+if [[ "$web" =~ ^https?:// ]]; then
+    web=$(echo "${web}" | awk -F/ '{print $3}')
+else
+    web=$(echo "${web}" | cut -d '/' -f 1)
+fi
 
 echo -ne "      \t${c}[${w}>${c}] ${w}Enter your wordlist ${g}(${w}Default${g}:${w} wordlist.txt${g}) ${g}:${n} "
 read wordlist
@@ -119,7 +124,6 @@ echo -ne "      \t${c}[${w}>${c}] ${w}Do you want to save the output? (yes/no) $
 read save_output
 
 if [[ "$save_output" == "yes" ]]; then
-    # Create directory with target website's name
     mkdir -p "${web}"
     output_file="${web}/output.txt"
 else
@@ -138,13 +142,12 @@ read thrd
 thread=${thrd:-${thread}}
 
 printf "\n"
-echo -e "      \t${g}[${w}+${g}]${w} Total Wordlist ${g}:${w} $( wc -l $wordlist | cut -d ' ' -f 1 )"
+echo -e "      \t${g}[${w}+${g}]${w} Total Wordlist ${g}:${w} $( wc -l < "$wordlist" )"
 
 echo -ne "      \t${g}[${w}+${g}]${w} Start Scanning${n}"
 for((;T++<=10;)) { printf '.'; sleep 1; }
 printf "\n\n"
 
-# Call the check_robots function here
 check_robots "http://${web}"
 if [[ "$save_output" == "yes" ]]; then
     echo -e "      \t${g}[${w}+${g}]${w} Output will be saved in directory: ${web}"
@@ -154,7 +157,8 @@ sleep 3
 main() {
     pids=()
 
-    for list in $(< $wordlist); do
+    while IFS= read -r list || [[ -n "$list" ]]; do
+        [[ -z "$list" ]] && continue
         if [[ ${#pids[@]} -ge $thread ]]; then
             wait -n
             pid_to_remove=$?
@@ -167,7 +171,7 @@ main() {
         fi
         scan "http://${web}" "${list}" &
         pids+=($!)
-    done
+    done < "$wordlist"
 
     wait
 }
