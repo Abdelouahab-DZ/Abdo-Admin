@@ -94,9 +94,10 @@ The script requests each path relative to the target website.
 
 ```text
 Abdo-Admin/
+├── Abdo-Admin Dependency Installer.sh
 ├── Abdo-Admin.sh
 ├── wordlist.txt
-├── CheckVersion.py        # optional
+├── Abdo-Admin_version_check.py        # optional
 ├── README.md
 └── LICENSE
 ```
