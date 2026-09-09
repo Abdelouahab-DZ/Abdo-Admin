@@ -11,7 +11,7 @@ A Bash-based web path scanner with a `robots.txt` checker and optional result lo
 - Tests paths with HTTP requests.
 - Supports configurable concurrent scans.
 - Optionally saves scan results.
-- Optional `CheckVersion.py` integration.
+- Optional `Abdo-Admin_version_check.py` integration.
 - Handles `Ctrl+C` cleanup.
 - Validates required dependencies and user input.
 
@@ -19,8 +19,7 @@ A Bash-based web path scanner with a `robots.txt` checker and optional result lo
 
 - Bash
 - `curl`
-- `wget`
-- Optional: Python 3, only when `CheckVersion.py` is present
+- Optional: Python 3 and `requests`, for the version check
 
 ## Installation
 
@@ -70,6 +69,9 @@ example.com/
 └── robots.txt
 ```
 
+Targets may be entered with or without `http://` or `https://`. If no scheme is
+provided, HTTPS is used.
+
 ## Wordlist format
 
 Put one path per line:
@@ -97,7 +99,8 @@ Abdo-Admin/
 ├── Abdo-Admin Dependency Installer.sh
 ├── Abdo-Admin.sh
 ├── wordlist.txt
-├── Abdo-Admin_version_check.py        # optional
+├── version.txt
+├── Abdo-Admin_version_check.py        # optional update checker
 ├── README.md
 └── LICENSE
 ```

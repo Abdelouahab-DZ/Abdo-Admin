@@ -6,6 +6,8 @@
 
 set -u
 
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+
 # -----------------------------
 # Colors and styles
 # -----------------------------
@@ -30,8 +32,9 @@ WEB=""
 # -----------------------------
 cleanup() {
     printf '\n'
-    # Stop curl processes started by this script when Ctrl+C is pressed.
-    pkill -INT -f 'curl' >/dev/null 2>&1 || true
+    for pid in "${pids[@]:-}"; do
+        kill -INT "$pid" >/dev/null 2>&1 || true
+    done
     exit 130
 }
 trap cleanup INT TERM
@@ -61,25 +64,30 @@ require_command() {
 
 check_dependencies() {
     require_command curl
-    require_command wget
 }
 
 # -----------------------------
-# URL normalization
+# URL normalization and validation
 # -----------------------------
-normalize_host() {
+normalize_url() {
     local input="$1"
+    local scheme
 
-    # Remove protocol.
-    input="${input#http://}"
-    input="${input#https://}"
+    if [[ "$input" != http://* && "$input" != https://* ]]; then
+        input="https://${input}"
+    fi
 
-    # Remove path, query, and fragment.
-    input="${input%%/*}"
+    scheme="${input%%://*}://"
+    input="${input#*://}"
     input="${input%%\?*}"
     input="${input%%\#*}"
+    input="${input%/}"
 
-    printf '%s' "$input"
+    if [[ -z "$input" || "$input" == */* || "$input" == *[[:space:]]* ]]; then
+        return 1
+    fi
+
+    printf '%s%s' "$scheme" "$input"
 }
 
 # -----------------------------
@@ -88,22 +96,25 @@ normalize_host() {
 check_robots() {
     local site="$1"
     local robots_url="${site%/}/robots.txt"
-    local response
+    local response_file
     local http_code
+    response_file="$(mktemp)" || return 1
 
-    # One request obtains both the body and HTTP status.
-    response="$(curl -fsSL --max-time 10 "$robots_url" 2>/dev/null || true)"
-    http_code="$(curl -sSL -o /dev/null -w '%{http_code}' --max-time 10 "$robots_url" 2>/dev/null || true)"
+    http_code="$(curl -sSL -o "$response_file" -w '%{http_code}' --max-time 10 \
+        "$robots_url" 2>/dev/null || true)"
 
-    if [[ "$http_code" == "200" && -n "$response" && "$response" != *"</html>"* ]]; then
+    if [[ "$http_code" == "200" && -s "$response_file" ]] &&
+        ! grep -qi '</html>' "$response_file"; then
         printf '%b\n' "      ${GREEN}[${WHITE}+${GREEN}]${WHITE} robots.txt found for ${site}${RESET}"
 
         if [[ -n "$OUTPUT_FILE" ]]; then
-            wget -q -O "${WEB}/robots.txt" "$robots_url"
+            cp -- "$response_file" "${WEB}/robots.txt"
         fi
     else
         printf '%b\n' "      ${GREEN}[${RED}-${GREEN}]${WHITE} No robots.txt found for ${site}${RESET}"
     fi
+
+    rm -f -- "$response_file"
 }
 
 # -----------------------------
@@ -117,7 +128,7 @@ scan_path() {
 
     status="$(curl -sSL -o /dev/null -w '%{http_code}' --max-time 10 "$url" 2>/dev/null || true)"
 
-    if [[ "$status" == "200" || "$status" == "201" ]]; then
+    if [[ "$status" =~ ^2[0-9][0-9]$ || "$status" =~ ^3[0-9][0-9]$ ]]; then
         printf '%b\n' "      ${GREEN}[${WHITE}+${GREEN}] ${WHITE}${url} ${YELLOW}~> ${GREEN}${status}${RESET}"
 
         if [[ -n "$OUTPUT_FILE" ]]; then
@@ -142,9 +153,9 @@ main() {
     local threads_input
     local total_lines
 
-    if [[ -f CheckVersion.py ]]; then
+    if [[ -f "${SCRIPT_DIR}/Abdo-Admin_version_check.py" ]]; then
         require_command python3
-        python3 CheckVersion.py
+        python3 "${SCRIPT_DIR}/Abdo-Admin_version_check.py"
         sleep 1
     fi
 
@@ -157,8 +168,7 @@ main() {
         exit 1
     fi
 
-    WEB="$(normalize_host "$web_input")"
-    if [[ -z "$WEB" ]]; then
+    if ! WEB="$(normalize_url "$web_input")"; then
         printf '%b\n' "${RED}[!] Error: could not parse website.${RESET}"
         exit 1
     fi
@@ -174,8 +184,10 @@ main() {
     read -r -p $'\e[96m[>]\e[97m Save output? (yes/no): ' save_output
 
     if [[ "$save_output" == "yes" ]]; then
-        mkdir -p "$WEB"
-        OUTPUT_FILE="${WEB}/output.txt"
+        local output_dir="${WEB#*://}"
+        output_dir="${output_dir//:/_}"
+        mkdir -p -- "$output_dir"
+        OUTPUT_FILE="${output_dir}/output.txt"
         : > "$OUTPUT_FILE"
     fi
 
@@ -191,7 +203,7 @@ main() {
     printf '%b\n' "      ${GREEN}[${WHITE}+${GREEN}]${WHITE} Total Wordlist: ${total_lines}${RESET}"
     printf '%b\n' "      ${GREEN}[${WHITE}+${GREEN}]${WHITE} Start Scanning...${RESET}"
 
-    check_robots "https://${WEB}"
+    check_robots "$WEB"
 
     if [[ -n "$OUTPUT_FILE" ]]; then
         printf '%b\n' "      ${GREEN}[${WHITE}+${GREEN}]${WHITE} Output: ${OUTPUT_FILE}${RESET}"
@@ -205,7 +217,11 @@ main() {
     while IFS= read -r path || [[ -n "$path" ]]; do
         [[ -z "$path" ]] && continue
 
-        scan_path "https://${WEB}" "$path" &
+        path="${path#"${path%%[![:space:]]*}"}"
+        path="${path%"${path##*[![:space:]]}"}"
+        [[ -z "$path" || "$path" == \#* ]] && continue
+
+        scan_path "$WEB" "$path" &
         pid=$!
         pids+=("$pid")
 
