@@ -18,20 +18,17 @@ VERSION_URL = (
     "Abdelouahab-DZ/Abdo-Admin/main/version.txt"
 )
 
-REQUIRED_COMMANDS = ["python3", "php", "git"]
-
-
 def check_dependencies():
     print(G + "[+]" + C + " Checking Dependencies And Packages..." + W)
 
-    missing = []
+    if which("python3") is None:
+        print(R + "[-] " + W + "python3" + C + " is not Installed!" + W)
+        return False
 
-    for package in REQUIRED_COMMANDS:
-        if which(package) is None:
-            print(R + "[-] " + W + package + C + " is not Installed!" + W)
-            missing.append(package)
-
-    if missing:
+    try:
+        import requests  # noqa: F401
+    except ImportError:
+        print(R + "[-] " + W + "requests" + C + " is not Installed!" + W)
         return False
 
     return True
